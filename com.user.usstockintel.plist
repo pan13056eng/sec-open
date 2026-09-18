@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.usstockintel</string>
+
+    <!-- 每天跑 4 次（每 6 小时）：00:05 / 06:05 / 12:05 / 18:05 本地时间 -->
+    <!-- 06:05 那次正好覆盖美股盘后（北京时间凌晨 4-5 点收盘）的公告高峰 -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>5</integer></dict>
+    </array>
+
+    <!-- 开机/重启后立刻补跑一次：否则要等到下一个整点才会恢复自动抓取 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>cd /Users/pzw/USStockIntel &amp;&amp; sleep 20 &amp;&amp; .venv/bin/python main.py &gt;&gt; logs/run.log 2&gt;&amp;1</string>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/pzw/USStockIntel/logs/launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/pzw/USStockIntel/logs/launchd.err</string>
+</dict>
+</plist>

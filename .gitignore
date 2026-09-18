@@ -1,0 +1,29 @@
+# 密钥 —— 绝不提交
+.env
+
+# Python
+.venv/
+.venv_*/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# 运行产物
+out/
+logs/
+
+# 给「网页上传」方式准备的暂存文件夹，本身不需要进仓库
+上传用/
+
+# 备份
+config.yaml.bak
+
+# 下载来的缓存（manage.py 会自动重新拉，886KB，没必要进仓库）
+data/company_tickers.json
+data/raw/
+
+# 注意：以下两个必须提交，别加进来
+#   data/intel.db     去重用的数据库（不提交的话每次都会重抓重概括）
+#   data/macro.json   宏观数据缓存（丢了也能自动重建）

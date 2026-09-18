@@ -1,0 +1,27 @@
+#!/bin/bash
+# 双击启动公司管理页：后台起本地服务 → 自动打开浏览器。
+# 停止：页面右上「停止服务」按钮，或再次双击本 App 会直接打开页面。
+DIR="/Users/pzw/USStockIntel"
+PORT=8765
+
+# 已经在跑 → 提示一下就行（简报页会自己探测到并载入管理面板，不再开新标签页）
+if lsof -ti tcp:$PORT >/dev/null 2>&1; then
+    osascript -e 'display notification "管理页已经在运行了" with title "美股公告管理"' >/dev/null 2>&1
+    exit 0
+fi
+
+cd "$DIR" || exit 1
+env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy -u ALL_PROXY -u all_proxy \
+    ./.venv/bin/python manage.py >/dev/null 2>&1 &
+PID=$!
+
+for i in $(seq 1 30); do
+    sleep 0.4
+    if lsof -ti tcp:$PORT >/dev/null 2>&1; then
+        open "http://127.0.0.1:$PORT"
+        exit 0
+    fi
+    kill -0 $PID 2>/dev/null || break
+done
+
+osascript -e 'display alert "管理页启动失败" message "请在终端运行：cd ~/USStockIntel && ./.venv/bin/python manage.py 查看报错" buttons {"好"}' >/dev/null 2>&1

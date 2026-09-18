@@ -1,0 +1,79 @@
+name: 抓取美股公告
+
+on:
+  schedule:
+    # GitHub 的 cron 用 UTC。北京时间 00:05 / 06:05 / 12:05 / 18:05 = UTC 16:05 / 22:05 / 04:05 / 10:05
+    # 注意：GitHub 的定时任务不保证准点，高峰期可能延迟 5~30 分钟，对本站无所谓。
+    - cron: "5 4,10,16,22 * * *"
+  workflow_dispatch:        # 也可以在 Actions 页面手动点一下跑
+
+permissions:
+  contents: write           # 需要写权限才能把去重库和新简报提交回来
+
+concurrency:
+  group: usstockintel
+  cancel-in-progress: false # 上一轮没跑完就别开新的，避免并发写库
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 抓取 + AI 概括
+        env:
+          # 在仓库 Settings → Secrets and variables → Actions 里添加
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          # 可选：不配就用 config.yaml 里那个（公开仓库建议配一个，免得邮箱被爬）
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+          # 发布模式：隐藏「监控名单」（等于不公开你关注哪些公司）
+          # 同时去掉「增删监控公司」面板——线上访问不到你本机的服务，留着像是坏了
+          PUBLISH_MODE: "1"
+        run: python main.py
+
+      - name: 发布到 docs/
+        run: |
+          set -e
+          mkdir -p docs
+          today=$(date +%F)
+          cp "out/简报-${today}.html" docs/index.html
+          cp "out/简报-${today}.html" "docs/简报-${today}.html"
+          if [ -f "out/简报-${today}.md" ]; then
+            cp "out/简报-${today}.md" "docs/简报-${today}.md"
+          fi
+          # 只留最近 14 天的归档，避免 docs/ 无限膨胀。
+          # 注意不能用 find -mtime：checkout 出来的文件 mtime 全是当天，删不掉任何东西，
+          # 必须按文件名里的日期判断。
+          python - <<'PYEOF'
+          import glob, os, re
+          from datetime import date, timedelta
+          cut = (date.today() - timedelta(days=14)).isoformat()
+          for p in glob.glob("docs/简报-*"):
+              m = re.search(r"(\d{4}-\d{2}-\d{2})", os.path.basename(p))
+              if m and m.group(1) < cut:
+                  os.remove(p)
+                  print("清理旧归档:", p)
+          PYEOF
+
+      - name: 提交回去（去重库 + 网页）
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data docs
+          if git diff --cached --quiet; then
+            echo "本次没有新内容，跳过提交"
+          else
+            git commit -m "简报 $(date +%F)"
+            git push
+          fi

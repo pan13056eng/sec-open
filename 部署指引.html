@@ -1,0 +1,310 @@
+<!DOCTYPE html><html lang="zh-CN" data-page-node-id="dRkhFliB5FhHEDtTkdhSLs"><head data-page-node-id="iGPAJffFZWMAfmkvinDFue"><meta charset="utf-8" data-page-node-id="O3KP938KYqkjId4eG4JhSB">
+<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="1orrB8WjsQ30lmHG9KTZ6V">
+<meta name="color-scheme" content="dark" data-page-node-id="3be4cdpeWGAYmqjOm7nAxJ">
+<title>部署到 GitHub · 操作指引</title>
+<style>
+:root{
+  --bg:#0B0E13; --panel:#141A22; --panel2:#11171F; --line:#232B36;
+  --fg:#E6EDF3; --fg2:#B6C2CF; --mut:#8B98A5; --dim:#6B7787;
+  --link:#58A6FF; --accent:#58A6FF; --ok:#3FB950; --warn:#F0883E;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);margin:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+color:var(--fg);line-height:1.72;padding:30px 18px 70px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:25px;font-weight:650;letter-spacing:-.3px;margin:0}
+header{margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.sub{color:var(--mut);font-size:12.5px;margin-top:9px}
+.sub b{color:var(--fg2);font-weight:500}
+
+.cfg{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+padding:14px 18px;margin-bottom:18px}
+.cfg .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.cfg label{font-size:12.5px;color:var(--mut)}
+.cfg input{background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+color:var(--fg);font-family:inherit;font-size:13.5px;padding:7px 11px;min-width:180px;outline:none}
+.cfg input:focus{border-color:var(--accent)}
+.cfg .hint{font-size:12px;color:var(--dim);margin-top:9px}
+.cfg .hint b{color:var(--warn);font-weight:500}
+
+.step{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+padding:15px 19px 16px;margin-bottom:12px;border-left:3px solid #2E3947;transition:.15s}
+.step:hover{border-left-color:var(--accent)}
+.step.done{border-left-color:var(--ok);opacity:.62}
+.step.done h2{text-decoration:line-through;text-decoration-color:var(--dim)}
+h2{font-size:16px;font-weight:650;margin:0;display:flex;align-items:center;gap:10px;letter-spacing:-.2px}
+h2 input[type=checkbox]{width:16px;height:16px;accent-color:var(--ok);cursor:pointer;flex:none;margin:0}
+.step p{font-size:13.5px;color:var(--fg2);margin:9px 0 0}
+.step ul,.step ol{font-size:13.5px;color:var(--fg2);margin:8px 0 0;padding-left:22px}
+.step li{margin:3px 0}
+.step li b{color:var(--fg);font-weight:600}
+a{color:var(--link);text-decoration:none;word-break:break-all}
+a:hover{text-decoration:underline}
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);
+border:1px solid var(--line);border-radius:7px;color:var(--fg2);cursor:pointer;
+font-family:inherit;font-size:12.5px;padding:5px 12px;transition:.15s;text-decoration:none}
+.btn:hover{border-color:var(--accent);color:var(--fg);text-decoration:none}
+.btn.pri{border-color:var(--accent);color:var(--link)}
+code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;
+padding:1px 6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#9FD3FF}
+pre{background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+padding:12px 14px;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+font-size:12.5px;color:var(--fg2);margin:10px 0 0;line-height:1.65}
+pre .c{color:var(--dim)}
+.note{background:#1A1408;border:1px solid #4A3A16;border-radius:9px;
+padding:10px 14px;font-size:12.5px;color:#E8C27A;margin-top:11px}
+.note b{color:#F5D08A}
+.ok{background:#0C1A10;border:1px solid #1F4629;border-radius:9px;
+padding:10px 14px;font-size:12.5px;color:#8FD9A8;margin-top:11px}
+.pill{font-size:11px;color:var(--dim);background:var(--panel2);border:1px solid var(--line);
+border-radius:999px;padding:1px 9px;font-weight:500}
+.bar{position:sticky;top:0;z-index:20;background:rgba(11,14,19,.94);
+border:1px solid var(--line);border-radius:10px;padding:9px 15px;margin-bottom:16px;
+display:flex;align-items:center;gap:11px;font-size:12.5px;color:var(--mut)}
+.bar .track{flex:1;height:5px;background:var(--panel2);border-radius:999px;overflow:hidden}
+.bar .fill{height:100%;width:0;background:var(--ok);border-radius:999px;transition:.3s}
+footer{margin-top:30px;font-size:11.5px;color:var(--dim);text-align:center;line-height:1.9}
+#err{display:none;background:#2A0F0F;border:1px solid #6B2020;color:#F0A0A0;
+border-radius:9px;padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+</style></head><body data-page-node-id="zz3pAYm2kW4HwjFHGColO4"><div class="wrap" data-page-node-id="vBf8UwEnn6xZGFseREHXhP">
+
+<header data-page-node-id="CGA8J3c0UHy4DvYJTjrWBz">
+  <h1 data-page-node-id="stKFa2snWdquczLG99iut2">部署到 GitHub · 操作指引</h1>
+  <div class="sub" data-page-node-id="HExpDzanRnwiJ8Sm2clLmk">先把下面两个框填上，页面里所有链接和命令会<b data-page-node-id="a7PSz1bqBremIK38rHHe9s">自动跟着变</b>。
+  每一步做完打个勾，进度会存在浏览器里，关了再开还在。</div>
+</header>
+
+<div id="err" data-page-node-id="mqMud6MQoAdlkJvcBdGhoq"></div>
+
+<div class="cfg" data-page-node-id="uqNeFILWxWRb0XIaPCsQxM">
+  <div class="row" data-page-node-id="gcnjljMvBtyHMu6noftF4F">
+    <label data-page-node-id="CUweg4UT3bMCLo963ICOON">GitHub 用户名</label>
+    <input id="ghUser" placeholder="比如 pzw2026" autocomplete="off" spellcheck="false" data-page-node-id="mpWNFxvX28jXHMhVhKwyId">
+    <label data-page-node-id="Adrm64C4MP1gWGqUstdwCe">仓库名</label>
+    <input id="ghRepo" placeholder="比如 usstock-intel" autocomplete="off" spellcheck="false" data-page-node-id="wIAiAQiHFttXtXLvECaBQz">
+  </div>
+  <div class="hint" data-page-node-id="vSHhj1Sx9JCAuiPC38Fi1Y">还没有账号？先到 <a href="https://github.com/signup" target="_blank" data-page-node-id="9G0feaVcH4KgmJdKmSgMef">github.com/signup</a> 注册，免费。
+  <b data-page-node-id="9dJcHekwx7KSVrL31anVCA">仓库名建议用英文小写加连字符</b>，它会成为你网址的一部分。</div>
+</div>
+
+<div class="bar" data-page-node-id="zzHFHwMR9ppyGS4BK7djvK">
+  <span id="progText" data-page-node-id="wQFILA35m065pW3NE6vWem">进度 0 / 6</span>
+  <div class="track" data-page-node-id="ISEw1XcyTeSc3XBGFdQ4fO"><div class="fill" id="progFill" data-page-node-id="PMjXAorHxssGeLYLBvNHC4"></div></div>
+</div>
+
+<div class="step" data-k="s1" data-page-node-id="RYjsqfbeEiAYNoTDnHuNi1">
+  <h2 data-page-node-id="GdZLnYktUn3nIBloVlRPv1"><input type="checkbox" data-ck="s1" data-page-node-id="0vPaWVF9EfLdJPX0xDPeXu">第 1 步 · 建一个空仓库</h2>
+  <p data-page-node-id="gwyXpWUbhO22erSRTcXgc8">打开建仓库页面：<a data-link="new" target="_blank" data-page-node-id="999LAOzlILF77T2jUztTqa">github.com/new</a></p>
+  <ul data-page-node-id="kxJ8G8CHJckfHdw1sg37DU">
+    <li data-page-node-id="GtjDb2X0vN5fdWB11W5oFp"><b data-page-node-id="CXCC3BDFbxD0CGIcr93hq7">Repository name</b> 填你上面写的仓库名</li>
+    <li data-page-node-id="VnrGEbvkB4HEnKrDJz7K85">可见性选 <b data-page-node-id="mgskscPQoMflmiKBmFcs4H">Public</b>（免费版只有公开仓库能开 Pages 网址）</li>
+    <li data-page-node-id="YetoxkqpudIBpTR4QRX3q1"><b data-page-node-id="xjIPm0kOXN1jZWQ9U3VTDa">不要</b>勾 Add a README / .gitignore / license —— 保持空仓库</li>
+    <li data-page-node-id="4ugSOH2ST37UtK18Qf82za">点 <b data-page-node-id="bJll7OdiI5XYNa5vu610dk">Create repository</b></li>
+  </ul>
+  <div class="note" data-page-node-id="hRiKpC3rVcHgZKQ46BZXmu"><b data-page-node-id="ElC7gyLtiQtkwVtjbjDLIR">为什么必须公开？</b>GitHub 免费版的 Pages（免费网址）只支持公开仓库。
+  代码本身没什么可藏的；真正敏感的是你的<b data-page-node-id="ZKRs5W9IacZbx3khCBfOtc">监控名单</b>，而那个已经在发布版里遮掉了
+  （workflow 里设了 <code data-page-node-id="JWLRUcHqhsZYB6g4ezCc5d">PUBLISH_MODE=1</code>）。API key 也放在 Secrets 里，不进代码。</div>
+</div>
+
+<div class="step" data-k="s2" data-page-node-id="mnzIGJ5FCtEPAr04zqmC9s">
+  <h2 data-page-node-id="7l4mK0gntXcGB6rCJsuKtg"><input type="checkbox" data-ck="s2" data-page-node-id="hTN5GTmIPAKvf6pB7nVj9I">第 2 步 · 把代码传上去</h2>
+  <p data-page-node-id="FEEmFLgDcqwUcgcZG6wAka"><b data-page-node-id="8Ox3cTVSNzwO8tlqRipfDT">方式 A · 网页拖拽</b>（不用碰终端，推荐先用这个）</p>
+  <ol data-page-node-id="U25klBEsN0UH1dBXmxBuXS">
+    <li data-page-node-id="7nUHhvJ3PxjnSrfBgeC1BG">点这个按钮打开已经准备好的文件夹：
+      <button class="btn" data-copy="open ~/USStockIntel/上传用" data-page-node-id="Z4LqrR4Z7F7CXtu8aTafEd">复制命令</button></li>
+    <li data-page-node-id="eUcYM6MviSq03P3YHAVG4P">把命令粘到「终端」里回车，Finder 会打开 <code data-page-node-id="E8e3GdGrfeFGe7ZAuGlPyL">上传用</code> 文件夹</li>
+    <li data-page-node-id="ffcxCO1s6osKUB0qno2RRD">按 <b data-page-node-id="ts5SatvEQBbEM5E81bOeps">Command + Shift + .</b>（三个键一起按）显示隐藏文件，你会看到多出一个
+      <code data-page-node-id="xDV5E4aypOVFhqDle0NK7J">.github</code> 文件夹 —— 这个是必须传的</li>
+    <li data-page-node-id="o7sDjGBv7Q8kGatciteEg3">全选（<b data-page-node-id="BAC9hy7pGHImddA4et2DbK">Command + A</b>）→ 拖到仓库页面的上传区域 → 底部填一句说明 → 点 <b data-page-node-id="xERZA00id8sHBptubHFzTf">Commit changes</b></li>
+  </ol>
+  <p style="margin-top:12px" data-page-node-id="vUQKMxF1plBAVFpoU0h9u3"><b data-page-node-id="YlfEeuLfS3JwHDQocYkLg5">方式 B · 终端推送</b>（以后改代码方便，但需要先建一个令牌）</p>
+  <ol data-page-node-id="uAeLphg9xPF6QzpgNARV7e">
+    <li data-page-node-id="4xeH5zz4XYJJowxLGlppJm">建令牌：<a href="https://github.com/settings/tokens" target="_blank" data-page-node-id="FIj34VEkD1ZczXgfKzBFzx">github.com/settings/tokens</a>
+      → Generate new token (classic) → 勾选 <b data-page-node-id="R5WyuzWcFKeByiRnFkl7tC">repo</b> → 生成后<b data-page-node-id="aRknCKRuGowAHKdEaY50lN">复制保存</b>（只显示一次）</li>
+    <li data-page-node-id="vlK3YEJ8oOCAvFiebYCh8w">把下面这段整体粘到终端，一路回车；提示输密码时<b data-page-node-id="LoCN185dmCAgBWLC1JDFMz">粘贴那个令牌</b>：</li>
+  </ol>
+  <pre id="cmdGit" data-page-node-id="RupW4L7aDALXayYTLCscOy">cd ~/USStockIntel
+git config --global user.name "你的名字"
+git config --global user.email "你的邮箱"
+git init
+git add -A
+git commit -m "init"
+git branch -M main
+git remote add origin https://github.com/USER/REPO.git
+git push -u origin main</pre>
+  <button class="btn" data-copy-el="cmdGit" style="margin-top:9px" data-page-node-id="CEg8DE6X49W0FZRO1bI0JW">复制这段命令</button>
+  <div class="note" data-page-node-id="57GX5dITpwMi2TJEVx7Jvf">两种方式<b data-page-node-id="aqBzGyfC0CIkiDLZzp7tkC">选一个就行</b>。方式 A 不需要任何认证配置，最省事；
+  方式 B 会在本机建一个 git 仓库，以后改完代码 <code data-page-node-id="vF0cNLsZFhocN0zHXhQWWu">git add -A &amp;&amp; git commit -m "改了什么" &amp;&amp; git push</code> 就能同步。</div>
+</div>
+
+<div class="step" data-k="s3" data-page-node-id="HPMhP73CZbfPq7DkKwSMxK">
+  <h2 data-page-node-id="zTsGwE4DQScEHaDLR9AM7X"><input type="checkbox" data-ck="s3" data-page-node-id="av8M2UVAEffo4AZTltuY2D">第 3 步 · 配置 API Key（Secrets）</h2>
+  <p data-page-node-id="724IiMDMjSlu8ZbCh7vNVk">打开设置页：<a data-link="secrets" target="_blank" data-page-node-id="Ac6DYkDsRi5rD8ZNgBA9HD">Settings → Secrets and variables → Actions</a></p>
+  <ul data-page-node-id="DMbbLEDA43mTjRZILhbX3I">
+    <li data-page-node-id="hQhyvbAqIHa9BB05RIBE9S">点 <b data-page-node-id="yKgosmULRSPsmbPrbf1Wh3">New repository secret</b></li>
+    <li data-page-node-id="yA7hPAryU2qrg4ZnZsLTNP">Name 填 <code data-page-node-id="kSG9h1vTCa3kVPet4tR7Au">GLM_API_KEY</code>（必须一字不差）</li>
+    <li data-page-node-id="5BajWAV3cOesmWIpQKpZ9P">Secret 填你的智谱 key —— 就在项目里的 <code data-page-node-id="fZpZnHDwIxO7EJyo7QkmBC">.env</code> 文件里，<code data-page-node-id="6x1sPqB6WEpgzLLVwKXvLC">GLM_API_KEY=</code> 后面那串</li>
+    <li data-page-node-id="xtKRiyEfZCoXA28tpZsb3F">点 <b data-page-node-id="VTPEAFKYEaFU9uMb8ibmj4">Add secret</b></li>
+  </ul>
+  <p style="margin-top:10px" data-page-node-id="BVH1TpAvvaVEyYGHC1b1pE">可选：再加一个 <code data-page-node-id="ZXcIzz2koCmDLfbYH9Mdbd">SEC_USER_AGENT</code>，值填 <code data-page-node-id="ipZuZW0PeIoSqdhQtAFxYs">你的名字 你的邮箱</code>。
+  不配也能跑（会用 config.yaml 里那个），但公开仓库建议配一个，免得邮箱被爬虫抓。</p>
+  <button class="btn" data-copy="open -e ~/USStockIntel/.env" data-page-node-id="J5WHG54sJS9lsZ72tLh93v">复制命令：打开 .env 看 key</button>
+  <div class="note" data-page-node-id="LU6F9AuhaZIF6SFJXI8WDz"><b data-page-node-id="Y8NZkjmAKH3YbUFCdxA7qK">这个 key 千万不能写进代码或配置文件。</b>
+  它现在只存在于本机 <code data-page-node-id="28BEZXShpvaLuDWk0obiJp">.env</code>（已被 .gitignore 排除）和 GitHub Secrets 里，两边都不公开。</div>
+</div>
+
+<div class="step" data-k="s4" data-page-node-id="lj9dokKAX3lhl7ADkNoFsg">
+  <h2 data-page-node-id="cKnGyITHdLR0fDtepfCfJU"><input type="checkbox" data-ck="s4" data-page-node-id="6ZFpWfpzE6E48jevs14NSq">第 4 步 · 打开 Pages（免费网址）</h2>
+  <p data-page-node-id="U7b3oLoOIEyYHLbwabyaOd">打开设置页：<a data-link="pages" target="_blank" data-page-node-id="4EFP0l9JG6W4Fgymmj3yzu">Settings → Pages</a></p>
+  <ul data-page-node-id="6hQHTVSQuFUektOdZWoCQH">
+    <li data-page-node-id="oVn8VRKqC99x4AyyKDZmTy"><b data-page-node-id="1rtqnigL6jdGtNIKyYaBNe">Source</b> 选 <code data-page-node-id="S4mmhUTtPtv8lVkkGvNdWA">Deploy from a branch</code></li>
+    <li data-page-node-id="fdi0DINEGe5ulKBz6Gimxm"><b data-page-node-id="0KB23Rt7nIFWDEI1g17hwO">Branch</b> 选 <code data-page-node-id="Eb5VhXDOsflr5dBz6Ch0Hy">main</code>，右边目录选 <code data-page-node-id="Yn7ZhFqlGF06qCll81Kqzl">/docs</code></li>
+    <li data-page-node-id="QBkJKcNiuWBOuYOptn4U2D">点 <b data-page-node-id="XxfDFF2Rb2LNep4T2nEAwB">Save</b></li>
+  </ul>
+  <p style="margin-top:10px" data-page-node-id="u812CN33rXpi0V6Z7sNo6E">保存后等 1～2 分钟，网址就能打开了 —— 上传的文件夹里已经带了一份 <code data-page-node-id="azRUoyXAfTvXDRdXrLq5f8">docs/index.html</code>（今天的简报），不用等定时任务。之后云端每次跑完都会自动更新它。</p>
+</div>
+
+<div class="step" data-k="s5" data-page-node-id="YmCNkjqfeqXFfqkyz5UTgf">
+  <h2 data-page-node-id="LruWn7rgj5QA0fIo12wFXF"><input type="checkbox" data-ck="s5" data-page-node-id="3kxdShSPR9YT5ExlsfZe4n">第 5 步 · 手动跑一次</h2>
+  <p data-page-node-id="zy72T5j5qwZynV3ubeTPZH">打开 Actions 页：<a data-link="actions" target="_blank" data-page-node-id="hueJtYJyDWfSGFB7kbOHtb">Actions</a></p>
+  <ul data-page-node-id="2mY74ux1sTHytgA3Yr1Pop">
+    <li data-page-node-id="PGWySv2I8jr2oZK9dYDe2I">左边选 <b data-page-node-id="L0S7hpBluZgHlwwytCexGa">抓取美股公告</b></li>
+    <li data-page-node-id="1Nz9zyPkAXVFS7Hijo8mEu">右边点 <b data-page-node-id="BCa13wGEBYUxDxMEHz2AtF">Run workflow</b> → 绿色按钮 <b data-page-node-id="bB5FmzUFpYfXsSJfBDQ7W7">Run workflow</b></li>
+    <li data-page-node-id="Z45h9yPEbkxxp8ZGEvaQZV">等 1～2 分钟，看到绿勾就是成功（点进去能看实时日志）</li>
+  </ul>
+  <p style="margin-top:10px" data-page-node-id="nRzSXBkwPgKsuDWGBpfTfs">跑完后它会把新简报提交回仓库，Pages 需要再等 1～2 分钟构建。</p>
+  <div class="note" data-page-node-id="PDt4cRVJ7xHZI7fTxZkink">如果这里没看到「抓取美股公告」这个 workflow，说明第 2 步的
+  <code data-page-node-id="fAVLtrnoxFjhGDkIlgaNjL">.github/workflows/daily.yml</code> 没传上去 —— 回第 2 步检查隐藏文件有没有显示出来。</div>
+</div>
+
+<div class="step" data-k="s6" data-page-node-id="B9cBWdQq6wMWCJ0tLj9uCl">
+  <h2 data-page-node-id="NcFwD4bIuPvzDNWV3dkKMn"><input type="checkbox" data-ck="s6" data-page-node-id="Hcp76trHnzzUNXcQ0GHE07">第 6 步 · 打开你的简报网址</h2>
+  <p data-page-node-id="nubNunTGiDrfcHvEkkyYXs">你的网址是：<a data-link="site" target="_blank" id="siteLink" data-page-node-id="QvhYdyCnuJSLiArCuLdoK2">（填上用户名和仓库名后显示）</a></p>
+  <p style="margin-top:10px" data-page-node-id="d9xH337z7BxYuLPUL5KK5F">手机浏览器直接打开这个网址就行，可以「添加到主屏幕」当 App 用。</p>
+  <div class="ok" data-page-node-id="UlrMnxWhZsg8DJg7qANCmV">之后它会<b data-page-node-id="zL7gWCrVh0o26B4xrsMAJ0">每 6 小时自动跑一次</b>（北京时间 0:05 / 6:05 / 12:05 / 18:05），
+  不需要你的电脑开着。GitHub 的定时任务可能延迟几分钟，正常现象。</div>
+</div>
+
+<div class="step" data-k="s7" data-page-node-id="qm2peaHYeVNglP3pZqz0ZA">
+  <h2 data-page-node-id="Qod9jNt1IEDLBDSUbzQDSv"><input type="checkbox" data-ck="s7" data-page-node-id="pKEVPeESwybXIVRNujxIQF">可选 · 关掉本机的定时任务</h2>
+  <p data-page-node-id="wSUbWrnP14ERHvLtHQuP20">云端跑起来之后，本机那个 launchd 定时任务就没必要了 —— 两边同时跑会各自维护一份数据库。</p>
+  <button class="btn" data-copy="rm -f ~/Library/LaunchAgents/com.user.usstockintel.plist && echo '已删除，重启后不再自动跑'" data-page-node-id="dP526efYpfnSFGju3Jg8vq">复制命令：关闭本机定时</button>
+  <div class="note" data-page-node-id="dEkwghWNHn0G7kjZgl8kfz">本机仍然可以手动跑：<code data-page-node-id="nLOB1Vp0gJk6hYdVLdaBTe">cd ~/USStockIntel &amp;&amp; ./.venv/bin/python main.py</code></div>
+</div>
+
+<footer data-page-node-id="D9lUQL1MqHHK93kQiYLMrC">本地生成的操作指引 · 不联网、不上传任何数据<br data-page-node-id="jewZsbD3lHgnYSzV04jrZi">
+填在输入框里的用户名和仓库名只存在你自己的浏览器里</footer>
+
+</div>
+<script>
+function showErr(msg){
+  var e = document.getElementById('err');
+  if (e){ e.style.display = 'block'; e.textContent = '页面脚本出错：' + msg; }
+}
+window.onerror = function(m){ showErr(m); };
+
+var LINKS = {
+  new:     function(){ return 'https://github.com/new'; },
+  repo:    function(u,r){ return 'https://github.com/' + u + '/' + r; },
+  secrets: function(u,r){ return 'https://github.com/' + u + '/' + r + '/settings/secrets/actions'; },
+  pages:   function(u,r){ return 'https://github.com/' + u + '/' + r + '/settings/pages'; },
+  actions: function(u,r){ return 'https://github.com/' + u + '/' + r + '/actions'; },
+  site:    function(u,r){ return 'https://' + u + '.github.io/' + r + '/'; }
+};
+
+function refresh(){
+  var u = (document.getElementById('ghUser').value || '').trim();
+  var r = (document.getElementById('ghRepo').value || '').trim();
+  var okU = u.length > 0, okR = r.length > 0;
+
+  document.querySelectorAll('[data-link]').forEach(function(a){
+    var kind = a.getAttribute('data-link');
+    if (kind === 'new'){ a.href = LINKS.new(); a.textContent = 'github.com/new'; return; }
+    if (!okU || !okR){ a.removeAttribute('href'); return; }
+    a.href = LINKS[kind](u, r);
+    if (kind === 'site'){ a.textContent = LINKS.site(u, r); }
+    if (kind === 'repo'){ a.textContent = 'github.com/' + u + '/' + r; }
+  });
+
+  var pre = document.getElementById('cmdGit');
+  if (pre){
+    pre.textContent = pre.textContent
+      .replace(/https:\/\/github\.com\/[^\s]*\.git/, 'https://github.com/' + (okU?u:'USER') + '/' + (okR?r:'REPO') + '.git');
+  }
+  try {
+    localStorage.setItem('ghUser', u);
+    localStorage.setItem('ghRepo', r);
+  } catch(e){}
+}
+
+function copyText(text, btn){
+  var done = function(){
+    if (!btn) return;
+    var old = btn.textContent;
+    btn.textContent = '已复制 ✓';
+    setTimeout(function(){ btn.textContent = old; }, 1400);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallback(text, done); });
+  } else {
+    fallback(text, done);
+  }
+}
+function fallback(text, done){
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); done(); } catch(e){ showErr('复制失败，请手动选中'); }
+  document.body.removeChild(ta);
+}
+
+function updateProgress(){
+  var boxes = document.querySelectorAll('[data-ck]');
+  var n = 0;
+  boxes.forEach(function(b){ if (b.checked) n++; });
+  var t = document.getElementById('progText');
+  var f = document.getElementById('progFill');
+  if (t) t.textContent = '进度 ' + n + ' / ' + boxes.length;
+  if (f) f.style.width = (boxes.length ? (n / boxes.length * 100) : 0) + '%';
+}
+
+function bind(){
+  document.getElementById('ghUser').addEventListener('input', refresh);
+  document.getElementById('ghRepo').addEventListener('input', refresh);
+
+  document.querySelectorAll('[data-ck]').forEach(function(b){
+    var k = b.getAttribute('data-ck');
+    try { b.checked = localStorage.getItem('ck_' + k) === '1'; } catch(e){}
+    var card = b.closest('.step');
+    if (card && b.checked) card.classList.add('done');
+    b.addEventListener('change', function(){
+      try { localStorage.setItem('ck_' + k, b.checked ? '1' : '0'); } catch(e){}
+      if (card) card.classList.toggle('done', b.checked);
+      updateProgress();
+    });
+  });
+
+  document.querySelectorAll('[data-copy]').forEach(function(btn){
+    btn.addEventListener('click', function(){ copyText(btn.getAttribute('data-copy'), btn); });
+  });
+  document.querySelectorAll('[data-copy-el]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var el = document.getElementById(btn.getAttribute('data-copy-el'));
+      copyText(el ? el.textContent : '', btn);
+    });
+  });
+}
+
+try {
+  bind();
+  document.getElementById('ghUser').value = localStorage.getItem('ghUser') || '';
+  document.getElementById('ghRepo').value = localStorage.getItem('ghRepo') || '';
+  refresh();
+  updateProgress();
+} catch(e){ showErr(e.message); }
+</script>
+</body></html>

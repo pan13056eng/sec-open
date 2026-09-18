@@ -1,0 +1,154 @@
+# ==========================================================
+# 美股公告情报系统 - 配置文件
+# 只做美股 ｜ 以官方公告为主 ｜ 重点：回购注销 + 发债
+# ==========================================================
+
+# ---------- SEC 设置 ----------
+sec:
+  # 【必须修改】SEC 强制要求每个请求带 User-Agent，格式："姓名 邮箱"
+  # 不填或乱填会被封 IP
+  user_agent: "ZHIWEIPAN pan1305674071@gmail.com"
+  # 请求间隔（秒）。官方要求 ≤10 次/秒，0.15 足够安全
+  request_delay: 0.15
+  # 回溯天数：只看最近 N 天的新公告（首次运行建议 30，之后会自动去重）
+  lookback_days: 30
+
+# ---------- 关注的股票 ----------
+# CIK 必须 10 位（不足前面补 0）
+# 查 CIK：https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany
+# 或用 ticker 反查：https://www.sec.gov/files/company_tickers.json
+#
+# 不想手改？跑 ./.venv/bin/python manage.py 用网页增删（会自动改这一段，并备份 config.yaml.bak）
+# ticker 只作显示标签，抓取实际只用 CIK；带交易所前缀（NASDAQ: META）也能自动识别
+watchlist:
+  - ticker: AAPL
+    cik: "0000320193"
+    name: 苹果
+  - ticker: MSFT
+    cik: "0000789019"
+    name: 微软
+  - ticker: NVDA
+    cik: "0001045810"
+    name: 英伟达
+  - ticker: GOOGL
+    cik: "0001652044"
+    name: 谷歌A（Alphabet）
+  - ticker: AMZN
+    cik: "0001018724"
+    name: 亚马逊
+  - ticker: AVGO
+    cik: "0001730168"
+    name: 博通
+  - ticker: MU
+    cik: "0000723125"
+    name: 美光科技
+  - ticker: AMAT
+    cik: "0000006951"
+    name: 应用材料
+  - ticker: TSM
+    cik: "0001046179"
+    name: 台积电（ADR·外国发行人）
+  - ticker: SKHY
+    cik: "0002120882"
+    name: SK海力士（ADR·外国发行人）
+  - ticker: SPCX
+    cik: "0001181412"
+    name: SpaceX（纳斯达克，正式名 Space Exploration Technologies）
+  - ticker: ORCL
+    cik: "0001341439"
+    name: 甲骨文
+filters:
+  # ===== 精简版：只留「发债 + 回购注销 + 业绩」三类 =====
+  #
+  # 已砍掉的噪音源（想要就自己加回来）：
+  #   S-3 / S-3ASR  货架注册：常年挂着，不代表真要发债
+  #   Form 4 / 144  增减持：量大，多数是股权激励行权这种噪音
+  #   13D / 13G / 13F  持股变动：13F 滞后 45 天，参考价值低
+  #   DEF 14A  股东会委托书：一年一次但篇幅巨长，翻译很烧额度
+  form_types:
+    - "8-K"      # 重大事件（发债、回购、协议）★主力
+    - "424B2"    # 债券发行定价补充 ★发债
+    - "424B5"    # 发行补充招股书 ★发债
+    - "FWP"      # 定价条款摘要（票息/到期/本金）★发债
+    - "SC TO-I"  # 发行人要约回购 ★回购
+    - "10-Q"     # 季报（月度回购明细表）★回购
+    - "10-K"     # 年报（回购明细表）
+    - "6-K"      # 外国发行人临时报告 ★台积电/SK海力士主要靠这个
+    - "20-F"     # 外国发行人年报 ★台积电
+
+  # 8-K 只看这 4 个 item
+  items_8k:
+    - "2.03"   # ★ 举债 / 发债
+    - "1.01"   # ★ 重大协议：债券契约 indenture、加速回购 ASR
+    - "8.01"   # ★ 回购授权、注销股份
+    - "2.02"   #   业绩公告（常含回购进展）
+    # 可选扩展：频率低但一旦出现很重要，几乎不增加日常噪音
+    # 想要就把下面几行的 # 去掉
+    # - "4.02"  # 财报重述（会计出问题的强信号）
+    # - "4.01"  # 更换审计师
+    # - "2.04"  # 债务违约 / 加速到期
+    # - "3.01"  # 退市风险
+    # - "5.02"  # CEO / CFO 变动
+
+# ---------- 顶部宏观小表（CPI / 就业）----------
+# 数据源：FRED（圣路易斯联储）的公开 CSV，免注册、免 API key，原始数字出自 BLS。
+# 取不到时会用 data/macro.json 的上次缓存顶上，并在页面上标注「缓存」，不会让简报失败。
+macro:
+  enabled: true
+  months: 6        # 显示最近几个月（CPI 同比要回溯 12 个月，取数会自动多取）
+  # 四个序列：CPIAUCNS 整体CPI(未季调) / CPILFENS 核心CPI / UNRATE 失业率 / PAYEMS 非农人数
+  # 想改指标就改 macro.py 顶部的 SERIES
+
+# ---------- 翻译设置 ----------
+# 只用免费云端 API，不跑本地模型（本地会吃满 CPU/GPU，打游戏时别开）
+translate:
+  # primary: glm（智谱免费 API）｜ local（Ollama 本地兜底，默认不开）
+  primary: glm
+
+  # ===== 免费 API 备用链 =====
+  # 主用接口挂了 / 没额度 / 没配 key，就按顺序自动往下试。
+  # 都是 OpenAI 兼容接口，加一家只需在下面复制一段：
+  #   - name: 名字（随便起，日志里显示）
+  #     base_url: 接口地址（不要带 /chat/completions，SDK 会自动拼）
+  #     model: 模型名（字符串必须和官网一致）
+  #     api_key: 直接填（可选）
+  #     api_key_env: 或读环境变量（更安全，推荐）
+  #     max_tokens / timeout / thinking_level：可选，不填用下面全局值
+  #     enabled: false  可以临时停用某家
+  #
+  # 常见免费源（政策会变，以官网为准）：
+  #   智谱 open.bigmodel.cn            glm-4-flash（免费，国内直连）
+  #   硅基流动 siliconflow.cn           Qwen2.5-7B-Instruct / glm-4-9b-chat（部分免费额度）
+  #   阿里百炼 dashscope（兼容模式）     qwen-turbo / qwen-plus（新用户免费额度）
+  #   腾讯混元 hunyuan.cloud.tencent    hunyuan-turbo（有免费额度）
+  #   火山方舟 volcengine.com           doubao-lite 系列（新用户免费额度）
+  #   OpenRouter openrouter.ai          模型名带 :free 后缀的（需国外网络）
+  providers: []
+  # 示例（去掉注释即可生效，key 建议走环境变量）：
+  #   - name: siliconflow
+  #     base_url: "https://api.siliconflow.cn/v1"
+  #     model: "Qwen/Qwen2.5-7B-Instruct"
+  #     api_key_env: "SF_API_KEY"
+
+  glm:
+    # 智谱开放平台 open.bigmodel.cn（OpenAI 兼容）
+    # ⚠️ base_url 不要带 /chat/completions，SDK 会自动拼接，带了反而会 404
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    # glm-4-flash：非思考模型，实测 7 秒/条，翻译质量够用 ✓ 推荐
+    # 若换 glm-5.3-flash：它「始终思考」无法关闭，须把 thinking_level 改成 low，且慢 3-5 倍
+    model: "glm-4-flash"
+    # ⚠️ key 不写在这里（配置文件要提交到 Git，写进来等于公开）。
+    # 本地：放在项目根目录的 .env 里（已被 .gitignore 忽略），main.py 启动时自动读取
+    # GitHub Actions：放仓库的 Secrets 里，同名 GLM_API_KEY
+    api_key_env: "GLM_API_KEY"
+  # ⚠️ 刻意没有本地模型兜底：本地 8B 会吃满 CPU/GPU（影响打游戏），
+  #    在 512M 低配机器上更会直接撑爆内存导致整机假死。宁可这次不产概要。
+  request_delay: 1.0              # 免费档并发=1，串行 + 间隔
+  timeout: 90                     # 单次超时秒数；SDK 已禁用自动重试，失败会立刻降级
+  max_chars: 12000                # 单条送给 AI 的最大字符（超出截断；只做概括，不用全文）
+  max_tokens: 1200                # 输出只要「概要+要点」，很短；给多没意义还更慢
+  thinking_level: "none"          # none=不传思考参数（最快）；用 5.x 思考模型时改 low
+
+# ---------- 输出 ----------
+output:
+  dir: "out"
