@@ -20,9 +20,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      # 版本要跟 Node 运行时对齐：v7 用 node24，v4/v5 还是 node20（已被 GitHub 标记弃用）
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
