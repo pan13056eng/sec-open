@@ -68,12 +68,35 @@ jobs:
       - name: 提交回去（去重库 + 网页）
         run: |
           set -e
+
+          # 心跳文件：公开仓库里「60 天没有提交」会被 GitHub 自动禁用定时任务，
+          # 而且是静默的（不报错，只是不再跑）。如果哪段时间公司都没发公告就
+          # 不会产生提交，所以这里每 7 天至少留一次活动记录。
+          python - <<'PYEOF'
+          import datetime, os
+          f = "data/.last-run"
+          today = datetime.date.today()
+          cut = (today - datetime.timedelta(days=7)).isoformat()
+          try:
+              with open(f, encoding="utf-8") as fh:
+                  last = fh.read().strip()
+          except OSError:
+              last = ""
+          if not last or last < cut:
+              os.makedirs("data", exist_ok=True)
+              with open(f, "w", encoding="utf-8") as fh:
+                  fh.write(today.isoformat() + "\n")
+              print("已更新心跳文件 data/.last-run →", today.isoformat())
+          else:
+              print("心跳文件还新（上次", last, "），不用动")
+          PYEOF
+
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A data docs
           if git diff --cached --quiet; then
             echo "本次没有新内容，跳过提交"
           else
-            git commit -m "简报 $(date +%F)"
+            git commit -m "自动更新 $(date +%F)"
             git push
           fi
