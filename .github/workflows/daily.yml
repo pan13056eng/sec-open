@@ -37,9 +37,10 @@ jobs:
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
           # 可选：不配就用 config.yaml 里那个（公开仓库建议配一个，免得邮箱被爬）
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
-          # 发布模式：隐藏「监控名单」（等于不公开你关注哪些公司）
-          # 同时去掉「增删监控公司」面板——线上访问不到你本机的服务，留着像是坏了
+          # 发布模式：去掉本机管理面板——线上访问不到你本机的 127.0.0.1:8765
           PUBLISH_MODE: "1"
+          # 云端「增删监控公司」后台（Cloudflare Worker）。留空就不渲染那个面板
+          ADMIN_API: "https://sec-admin.pan1305674071.workers.dev"
         run: python main.py
 
       - name: 发布到 docs/

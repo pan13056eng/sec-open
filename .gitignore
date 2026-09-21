@@ -30,3 +30,4 @@ data/raw/
 # 注意：以下两个必须提交，别加进来
 #   data/intel.db     去重用的数据库（不提交的话每次都会重抓重概括）
 #   data/macro.json   宏观数据缓存（丢了也能自动重建）
+.dev.vars
