@@ -328,17 +328,57 @@ GitHub Actions 私有仓每月 2000 分钟免费（本项目每月只用 30~40 �
 | **Pages 免费网址** | ✅ 支持 | ❌ 需要 GitHub Pro |
 | 代码/名单曝光 | 会（`PUBLISH_MODE=1` 已遮名单） | 不会 |
 
-**想用免费网址，就得是公开仓库。** 代码本身没什么可藏的，
-敏感的是监控名单——workflow 里已经默认设了 `PUBLISH_MODE=1` 把它遮掉。
+**想用免费网址，就得是公开仓库。** 代码本身没什么可藏的；监控名单默认是显示的
+（它等于你的持仓，介意的话把 `brief.py` 里 `watch_html` 那块加回 `publish` 判断即可）。
 
 如果坚持要私有仓库又要网址，两条路：给 GitHub 升 Pro，或者改用 Cloudflare Pages /
 Netlify 的免费档（都支持从私有仓部署，代价是多注册一个服务）。
+
+### 网页上增删监控公司
+
+简报页上有个 **「⚙ 增删监控公司」** 折叠面板，点开输一次管理密钥就能直接改名单，
+不用碰代码、不用开电脑上的服务。
+
+**它背后是 Cloudflare Worker**（源码在 `cloudflare-worker/`）：
+
+```
+页面点「添加/移除」
+      ↓
+Worker（保管 GitHub 密钥 + 代理 SEC 查询）
+      ↓ 改仓库里的 config.yaml
+下次定时抓取自动用上新名单
+```
+
+为什么非要这个 Worker：浏览器里**不能放 GitHub 密钥**（等于公开），
+而 **SEC 的查询接口不给 CORS 头**（浏览器直连会被拦）。这两件事只能由服务端做。
+
+**接口**：
+
+| 接口 | 作用 | 要密钥 |
+|---|---|---|
+| `GET /api/state` | 读当前名单 | 否 |
+| `POST /api/lookup` | 股票代码 → 官方全名 + 10 位 CIK | 否 |
+| `POST /api/add` | 加公司 | ✅ |
+| `POST /api/remove` | 删公司 | ✅ |
+
+**怎么启用**：workflow 里的 `ADMIN_API` 填 Worker 地址（留空就不渲染这个面板）。
+
+```bash
+cd cloudflare-worker
+../.tools/node_modules/.bin/wrangler deploy          # 首次要双击 ../授权Cloudflare.command
+../.tools/node_modules/.bin/wrangler secret put GITHUB_TOKEN   # 只授权本仓库 Contents 读写
+../.tools/node_modules/.bin/wrangler secret put ADMIN_TOKEN    # 页面登录用的密钥
+```
+
+**注意**：增删后**不会立刻出现新公告**，要等下一次定时抓取（每天 4 次）才会去拉。
 
 ### 云端跑的注意事项
 
 - **去重靠 `data/intel.db`**，workflow 每次会把它和新简报一起提交回仓库。
   不提交的话每次都是全新环境，会把 30 天内的公告全部重新概括一遍（费额度但不要钱）。
-- **cron 不准点**，高峰期可能延迟 5~30 分钟，本站无所谓。
+- **cron 会漂移，不是准点的**。GitHub 只保证「大约按这个频率跑」，不保证踩点。
+  实测偏差可以到 **3～4 小时**（名义 12:05 的那次经常在 08:10 就跑了）。
+  但每天总次数基本还是 4 次，对看公告够用 —— 别拿「怎么 6 点了还没跑」当故障。
 - **60 天无提交会被自动禁用**：GitHub 官方规定，公开仓库的定时任务在
   「60 天没有任何仓库活动」时会被**静默禁用**（不报错，只是不再跑）。
   本项目有 12 家公司、通常每周都有公告，本来不太会触发；但为了保险，
