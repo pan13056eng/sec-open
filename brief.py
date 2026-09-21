@@ -494,13 +494,12 @@ def generate_html(
     watchlist = watchlist or []
     n_watch = len(watchlist) or watch_count
 
-    # 发布到公开网页时（PUBLISH_MODE=1）隐藏「监控名单」——名单等于持仓，不适合公开
+    # 发布模式（PUBLISH_MODE=1）只影响「本机管理面板」——线上访问不到 127.0.0.1:8765。
+    # 监控名单照常显示（用户名明确要求），它本身就是个可折叠的 <details>。
     publish = os.environ.get("PUBLISH_MODE") == "1"
 
     # 监控名单（可折叠；点公司名即筛选该公司的公告）
-    if publish:
-        watch_html = ""
-    elif watchlist:
+    if watchlist:
         items_html = []
         for w in watchlist:
             tk = (w.get("ticker") or "").strip()
@@ -637,7 +636,7 @@ def generate(
 
     lines += _macro_md(macro or [], macro_stale)
 
-    if watchlist and os.environ.get("PUBLISH_MODE") != "1":
+    if watchlist:
         lines.append("<details><summary>监控名单（点击展开）</summary>")
         lines.append("")
         lines.append("| 代码 | 公司 | 本区间公告 |")
