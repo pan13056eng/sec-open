@@ -1,0 +1,19 @@
+name = "sec-admin"
+main = "src/worker.js"
+compatibility_date = "2026-09-21"
+# 账号 ID 不算密钥，写在这里省得每次部署都要选账号
+account_id = "b11f5b47ab733391088a54923d46bfad"
+
+# 以下都是公开信息，可以写进仓库。
+# 真正的密钥（GITHUB_TOKEN / ADMIN_TOKEN）用 `wrangler secret put` 设置，
+# 不写在这里，也不会进 Git。
+[vars]
+GITHUB_OWNER = "pan13056eng"
+GITHUB_REPO = "sec-open"
+GITHUB_BRANCH = "main"
+# SEC 强制要求填「姓名 邮箱」，不填会被封 IP
+SEC_USER_AGENT = "USStockIntel pan1305674071@gmail.com"
+
+# 观察日志用： wrangler tail
+[observability]
+enabled = true

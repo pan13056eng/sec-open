@@ -101,6 +101,28 @@ text-overflow:ellipsis;white-space:nowrap}
 border:1px solid var(--line);border-radius:999px;padding:1px 7px}
 .wl-item.zero{opacity:.45}
 
+.adm-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.adm-row input{background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+color:var(--fg);font-family:inherit;font-size:13px;padding:6px 10px;outline:none;min-width:130px}
+.adm-row input:focus{border-color:var(--accent)}
+.adm-row button{background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+color:var(--fg2);cursor:pointer;font-family:inherit;font-size:12.5px;padding:6px 13px;transition:.15s}
+.adm-row button:hover{border-color:var(--accent);color:var(--fg)}
+.adm-row button.pri{background:#1F6FEB;border-color:#1F6FEB;color:#fff}
+.adm-row button.pri:hover{background:#388BFD;color:#fff}
+.adm-list{display:flex;flex-direction:column;gap:6px;margin:11px 0 4px}
+.adm-item{display:flex;align-items:center;gap:9px;background:var(--panel2);
+border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px}
+.adm-item b{font-weight:650;font-size:12.5px;letter-spacing:.2px;flex:none}
+.adm-item span{color:var(--mut);font-size:12px;flex:1;overflow:hidden;
+text-overflow:ellipsis;white-space:nowrap}
+.adm-x{flex:none;color:var(--dim);cursor:pointer;font-size:12px;
+padding:2px 8px;border-radius:5px}
+.adm-x:hover{color:#F0883E;background:#1B232E}
+.adm-msg{font-size:12.5px;color:var(--mut);margin-top:9px;line-height:1.7}
+.adm-msg.ok{color:#7EE2A8}
+.adm-msg.err{color:#F0883E}
+
 .empty{background:var(--panel);border:1px dashed var(--line);border-radius:14px;
 padding:44px;text-align:center;color:var(--mut);font-size:14px}
 footer{margin-top:34px;font-size:11.5px;color:var(--dim);text-align:center;line-height:1.9}
@@ -149,6 +171,144 @@ document.querySelectorAll('.wl-item').forEach(function(b){
     window.scrollTo(0, 0);
   };
 });
+"""
+
+
+# 增删监控公司的前端。后端是 Cloudflare Worker（URL 由 ADMIN_API 环境变量注入），
+# Worker 保管 GitHub 密钥并代理 SEC 查询——这两件事浏览器都做不了（前者不能暴露，
+# 后者 SEC 不给 CORS 头）。没配 ADMIN_API 时这段脚本根本不会被写进页面。
+ADMIN_JS = """
+(function(){
+  var API = '__ADMIN_API__';
+  var box = document.getElementById('admBox');
+  var st  = document.getElementById('admState');
+  var det = document.getElementById('admDet');
+  if (!box || !st || !det) return;
+
+  function tk(){ return localStorage.getItem('sec_adm_token') || ''; }
+  function setTk(v){ if (v) localStorage.setItem('sec_adm_token', v); else localStorage.removeItem('sec_adm_token'); }
+
+  function esc(s){
+    return (s == null ? '' : String(s)).replace(/[&<>"]/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c];
+    });
+  }
+  function status(t, color){ st.textContent = t; st.style.color = color || ''; }
+  function msg(html, cls){
+    return '<div class="adm-msg ' + (cls || '') + '">' + html + '</div>';
+  }
+  // 每次都要重新查：renderList 会重写整块 innerHTML，
+  // 之前存下来的 tip 引用已经脱离文档了，写它等于写空气。
+  function setTip(html, cls){
+    var t = document.getElementById('admTip');
+    if (t) t.innerHTML = msg(html, cls);
+  }
+
+  function call(path, opt){
+    opt = opt || {};
+    var h = { 'Content-Type': 'application/json' };
+    if (tk()) h['X-Admin-Token'] = tk();
+    return fetch(API + path, {
+      method: opt.method || 'GET',
+      headers: h,
+      body: opt.body ? JSON.stringify(opt.body) : undefined
+    }).then(function(r){
+      return r.json().catch(function(){
+        return { ok:false, error:'后台返回异常（HTTP ' + r.status + '）' };
+      });
+    });
+  }
+
+  // 没登录：让输入密钥
+  function renderLogin(err){
+    status('未登录');
+    box.innerHTML =
+      '<div class="adm-row">' +
+        '<input id="admTok" type="password" placeholder="管理密钥" autocomplete="off">' +
+        '<button class="pri" id="admGo">登录</button>' +
+        '<button id="admClear" style="display:none">清除</button>' +
+      '</div>' +
+      msg('输入管理密钥后才能增删公司。密钥只存在你自己浏览器里，不会发给别的任何地方。') +
+      (err ? msg(esc(err), 'err') : '');
+    document.getElementById('admGo').onclick = function(){
+      var v = document.getElementById('admTok').value.trim();
+      if (!v) { renderLogin('密钥不能为空'); return; }
+      setTk(v);
+      render();
+    };
+  }
+
+  // 已登录：列出公司 + 添加表单
+  function renderList(items){
+    status(items.length + ' 家', '#3FB950');
+    var rows = items.map(function(it, i){
+      return '<div class="adm-item">' +
+               '<b>' + esc(it.ticker) + '</b>' +
+               '<span>' + esc(it.name || '') + ' · CIK ' + esc(it.cik) + '</span>' +
+               '<span class="adm-x" data-i="' + i + '" title="移除">移除</span>' +
+             '</div>';
+    }).join('');
+
+    box.innerHTML =
+      '<div class="adm-list">' + (rows || '<div class="adm-msg">名单是空的</div>') + '</div>' +
+      '<div class="adm-row">' +
+        '<input id="admNew" placeholder="股票代码，如 TSLA" autocomplete="off">' +
+        '<button class="pri" id="admAdd">查询并添加</button>' +
+        '<button id="admOut">退出登录</button>' +
+      '</div>' +
+      '<div id="admTip"></div>' +
+      msg('改完不会立刻出现 —— 要等下一次定时抓取（每天 4 次）才会拉这家公司的公告。');
+
+    Array.prototype.forEach.call(box.querySelectorAll('.adm-x'), function(x){
+      x.onclick = function(){
+        var it = items[+x.dataset.i];
+        if (!confirm('确定把 ' + it.ticker + ' 从监控名单里移除？')) return;
+        setTip('正在移除…');
+        call('/api/remove', { method:'POST', body:{ ticker: it.ticker } }).then(function(r){
+          if (r.ok) { renderList(r.items || []); setTip('已移除 ' + esc(it.ticker) + ' ✓', 'ok'); }
+          else setTip(esc(r.error), 'err');
+        });
+      };
+    });
+
+    document.getElementById('admOut').onclick = function(){ setTk(''); render(); };
+    document.getElementById('admAdd').onclick = function(){
+      var t = document.getElementById('admNew').value.trim().toUpperCase();
+      if (!t) { setTip('先填股票代码', 'err'); return; }
+      setTip('正在 SEC 查询 ' + esc(t) + ' …');
+      call('/api/lookup', { method:'POST', body:{ ticker: t } }).then(function(r){
+        if (!r.ok) { setTip(esc(r.error), 'err'); return; }
+        var it = r.item;
+        if (!confirm('查到：' + it.ticker + ' — ' + it.name + '\\nCIK ' + it.cik + '\\n\\n添加进监控名单？')) {
+          setTip('已取消'); return;
+        }
+        setTip('正在写入…');
+        return call('/api/add', { method:'POST', body: it }).then(function(r2){
+          if (r2.ok) { renderList(r2.items || []); setTip('已添加 ' + esc(it.ticker) + ' ✓', 'ok'); }
+          else setTip(esc(r2.error), 'err');
+        });
+      }).catch(function(e){ setTip('连不上后台：' + esc(e), 'err'); });
+    };
+  }
+
+  function render(){
+    if (!tk()) { renderLogin(''); return; }
+    status('读取中…');
+    box.innerHTML = '<div class="adm-msg">正在读取名单…</div>';
+    call('/api/state').then(function(r){
+      if (r.ok) { renderList(r.items || []); return; }
+      if (r.error && r.error.indexOf('密钥') >= 0) { setTk(''); renderLogin('密钥不对，请重新输入'); return; }
+      status('出错');
+      box.innerHTML = msg(esc(r.error), 'err');
+    }).catch(function(e){
+      status('连不上');
+      box.innerHTML = msg('连不上后台：' + esc(e) + '<br>如果一直这样，说明你的网络访问不到 Cloudflare。', 'err');
+    });
+  }
+
+  // 折叠着的时候不发请求，展开了才加载
+  det.addEventListener('toggle', function(){ if (det.open) render(); });
+})();
 """
 
 
@@ -520,13 +680,25 @@ def generate_html(
     else:
         watch_html = ""
 
-    # 增删公司（管理页以 iframe 嵌入；服务没开时给出启动提示）
-    # 发布版里这块要去掉：线上访问不到本机的 127.0.0.1:8765 服务，
-    # 留着只会永远显示「管理功能还没开启」，看着像坏了。
-    mgr_html = (
-        ""
-        if publish
-        else (
+    # 增删公司有两条路：
+    #  1) 配了 ADMIN_API（Cloudflare Worker 的地址）→ 用云端面板，本机和线上都能用；
+    #  2) 没配且是本机页面 → 用本机 manage.py 服务（iframe 嵌入）。
+    #     发布版里必须去掉本机面板：线上访问不到 127.0.0.1:8765，
+    #     留着只会永远显示「管理功能还没开启」，看着像坏了。
+    admin_api = (os.environ.get("ADMIN_API") or "").strip()
+    if admin_api:
+        adm_html = (
+            '<details class="wl" id="admDet"><summary>⚙ 增删监控公司'
+            '<span class="cnt" id="admState">…</span></summary>'
+            '<div id="admBox"></div>'
+            '<div class="sub" style="margin:8px 0 2px;font-size:12px">'
+            "增删后要等<b>下次定时抓取</b>（每天 4 次）才会去拉这家的公告。</div>"
+            "</details>"
+        )
+    elif publish:
+        adm_html = ""
+    else:
+        adm_html = (
             '<details class="wl" id="mgrDet"><summary>⚙ 增删监控公司'
             '<span class="cnt" id="mgrState">…</span></summary>'
             '<div id="mgrBox" style="margin-top:10px"></div>'
@@ -535,7 +707,6 @@ def generate_html(
             "想马上看到就点下面的「立即跑一次抓取」，跑完刷新本页。</div>"
             "</details>"
         )
-    )
 
     stats_html = "".join(
         f'<div class="stat"><div class="k">{k}</div><div class="v">{v}</div></div>'
@@ -565,7 +736,7 @@ def generate_html(
         f"AI 读英文原文后直接生成中文概括，关键决策请回看原文核对</div></header>"
         f"<div class='stats'>{stats_html}</div>"
         f"{_macro_html(macro or [], macro_stale)}"
-        f"{watch_html}{mgr_html}"
+        f"{watch_html}{adm_html}"
         f"<div class='bar'><div class='bar-in'>"
         f"<div class='spacer'></div>"
         f"<input id='q' placeholder='搜索公司/关键词…' autocomplete='off'>"
@@ -575,7 +746,11 @@ def generate_html(
         f"<footer>本地生成 · 数据来自 SEC EDGAR（免费公开）<br>"
         f"本页仅做信息聚合与翻译，不构成投资建议</footer>"
         f"</div><script>{HTML_JS}</script>"
-        + ("" if publish else f"<script>{MGR_JS}</script>")
+        + (
+            f"<script>{ADMIN_JS.replace('__ADMIN_API__', admin_api)}</script>"
+            if admin_api
+            else ("" if publish else f"<script>{MGR_JS}</script>")
+        )
         + "</body></html>"
     )
 

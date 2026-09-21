@@ -7,6 +7,9 @@
 __pycache__/
 *.pyc
 
+# 本地装的 wrangler（100MB+ node_modules，不进仓库）
+.tools/
+
 # macOS
 .DS_Store
 
