@@ -6,6 +6,7 @@
 import json
 import os
 import sys
+import time
 import urllib.request
 from datetime import datetime
 
@@ -61,21 +62,34 @@ def _remote_watchlist():
     api = (os.environ.get("WATCHLIST_API") or "").strip()
     if not api:
         return None
-    try:
-        # 用 urllib 而不是 requests：代理环境里 requests 会莫名读超时。
-        # Accept-Encoding: identity 是同一个坑的另一半（压缩响应会被某些 CDN 挂住）。
-        req = urllib.request.Request(
-            api.rstrip("/") + "/api/state",
-            headers={
-                "User-Agent": "USStockIntel",
-                "Accept": "application/json",
-                "Accept-Encoding": "identity",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=20) as r:
-            data = json.loads(r.read().decode("utf-8"))
-    except Exception as e:  # noqa: BLE001
-        log(f"云端名单拉不到（{e}），改用 config.yaml")
+
+    # 重试 3 次：一次网络抖动就静默退回旧名单的话，用户刚加的公司会「明明成功了却没生效」，
+    # 很难查。多试几下的代价只是几十秒。
+    # 用 urllib 而不是 requests：代理环境里 requests 会莫名读超时。
+    # Accept-Encoding: identity 是同一个坑的另一半（压缩响应会被某些 CDN 挂住）。
+    data = None
+    last_err = None
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(
+                api.rstrip("/") + "/api/state",
+                headers={
+                    "User-Agent": "USStockIntel",
+                    "Accept": "application/json",
+                    "Accept-Encoding": "identity",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=15) as r:
+                data = json.loads(r.read().decode("utf-8"))
+            break
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            if attempt < 2:
+                log(f"云端名单第 {attempt + 1} 次没拉到（{e}），重试…")
+                time.sleep(2)
+
+    if data is None:
+        log(f"云端名单拉不到（{last_err}），改用 config.yaml")
         return None
 
     items = data.get("items") if isinstance(data, dict) else None
