@@ -4,6 +4,12 @@ compatibility_date = "2026-09-21"
 # 账号 ID 不算密钥，写在这里省得每次部署都要选账号
 account_id = "b11f5b47ab733391088a54923d46bfad"
 
+# 监控名单存在这里（KV）。之前是改 GitHub 上的 config.yaml，
+# 但那需要令牌有「写」权限；改 KV 不需要任何 GitHub 写权限，少一个卡点。
+[[kv_namespaces]]
+binding = "WATCHLIST"
+id = "7725c22587ec40159fa8dad1ab25012e"
+
 # 以下都是公开信息，可以写进仓库。
 # 真正的密钥（GITHUB_TOKEN / ADMIN_TOKEN）用 `wrangler secret put` 设置，
 # 不写在这里，也不会进 Git。

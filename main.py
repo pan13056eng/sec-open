@@ -3,8 +3,10 @@
 手动跑：  python3 main.py
 每天自动：由 launchd 每 6 小时触发（见 com.user.usstockintel.plist）
 """
+import json
 import os
 import sys
+import urllib.request
 from datetime import datetime
 
 import yaml
@@ -49,6 +51,58 @@ def log(msg: str):
     print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
+def _remote_watchlist():
+    """从云端后台（Cloudflare Worker）拉监控名单。
+
+    网页上增删的公司存在 Worker 的 KV 里，所以定时跑要以那边为准，
+    config.yaml 只当兜底。拉不到（没配 / 后台挂了 / 网络不通）就返回 None，
+    让调用方继续用 config.yaml —— 后台出问题不该让整个抓取失败。
+    """
+    api = (os.environ.get("WATCHLIST_API") or "").strip()
+    if not api:
+        return None
+    try:
+        # 用 urllib 而不是 requests：代理环境里 requests 会莫名读超时。
+        # Accept-Encoding: identity 是同一个坑的另一半（压缩响应会被某些 CDN 挂住）。
+        req = urllib.request.Request(
+            api.rstrip("/") + "/api/state",
+            headers={
+                "User-Agent": "USStockIntel",
+                "Accept": "application/json",
+                "Accept-Encoding": "identity",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=20) as r:
+            data = json.loads(r.read().decode("utf-8"))
+    except Exception as e:  # noqa: BLE001
+        log(f"云端名单拉不到（{e}），改用 config.yaml")
+        return None
+
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, list) or not items:
+        log("云端名单是空的，改用 config.yaml")
+        return None
+
+    out = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        tk = str(it.get("ticker") or "").strip().upper()
+        if not tk:
+            continue
+        out.append(
+            {
+                "ticker": tk,
+                "cik": str(it.get("cik") or "").strip(),
+                "name": str(it.get("name") or "").strip(),
+            }
+        )
+    if not out:
+        return None
+    log(f"云端名单：{len(out)} 家")
+    return out
+
+
 def main():
     with open(os.path.join(BASE, "config.yaml"), encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
@@ -63,6 +117,12 @@ def main():
     tr = Translator(tcfg)
 
     wl = cfg.get("watchlist") or []
+
+    # 名单优先从云端后台（Cloudflare Worker / KV）取。
+    # 网页上增删的公司存在那里，config.yaml 只是兜底。
+    remote = _remote_watchlist()
+    if remote is not None:
+        wl = remote
 
     # 从 watchlist 删掉的公司，历史记录一并清掉（删干净、不用碰数据库）
     removed = db.prune_tickers([w["ticker"] for w in wl])

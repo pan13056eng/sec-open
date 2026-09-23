@@ -41,6 +41,9 @@ jobs:
           PUBLISH_MODE: "1"
           # 云端「增删监控公司」后台（Cloudflare Worker）。留空就不渲染那个面板
           ADMIN_API: "https://sec-admin.pan1305674071.workers.dev"
+          # 抓取时从后台拉名单（网页上增删的公司存在 Worker 的 KV 里）。
+          # 拉不到会自动回退 config.yaml，后台挂了也不会让这次抓取失败。
+          WATCHLIST_API: "https://sec-admin.pan1305674071.workers.dev"
         run: python main.py
 
       - name: 发布到 docs/

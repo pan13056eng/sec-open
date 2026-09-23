@@ -5,9 +5,14 @@
 //   所以增删改由这个 Worker 代劳：它保管 GitHub token（写成 Worker secret，
 //   不会出现在代码里），顺便代理 SEC 的公司查询（SEC 不给 CORS 头，浏览器直连不了）。
 //
-// 数据存哪：直接改仓库里的 config.yaml。
-//   好处是「唯一数据源」——GitHub Actions 本来就按 config.yaml 抓，
-//   这边改完，下次定时跑自动生效，定时任务的代码不用动。
+// 数据存哪：Cloudflare KV（binding 名 WATCHLIST）。
+//   名单以 KV 为准。KV 是空的第一次会自动从 config.yaml 灌进来
+//   ——读 config.yaml 用的是「只读」权限，公开仓库读不需要写权限。
+//   定时任务启动时从这个 Worker 拉名单，拉不到才回退 config.yaml。
+//
+//   为什么不用「改 config.yaml」：那样要求 GitHub 令牌有写权限，
+//   而精细化令牌经常漏勾 Contents: Read and write，一漏就是 403。
+//   改存 KV 之后，整条链路不需要任何 GitHub 写权限。
 
 const GH = 'https://api.github.com';
 const SEC_TICKERS = 'https://www.sec.gov/files/company_tickers.json';
@@ -161,6 +166,44 @@ async function lookupTicker(env, ticker) {
   return null;
 }
 
+// ---------- 名单读写（KV 为准） ----------
+
+const KV_KEY = 'list';
+
+// 读名单：KV 有就用 KV；KV 空的第一次，从 config.yaml 灌进来
+// （公开仓库读不需要写权限，所以只读令牌也能完成初始化）
+async function loadItems(env) {
+  const raw = await env.WATCHLIST.get(KV_KEY);
+  if (raw) {
+    try {
+      const items = JSON.parse(raw);
+      if (Array.isArray(items)) return items;
+    } catch (e) {
+      /* 存坏了就重新从 config.yaml 灌 */
+    }
+  }
+  const { text } = await readConfig(env);
+  const items = parseWatchlist(text);
+  await env.WATCHLIST.put(KV_KEY, JSON.stringify(items));
+  return items;
+}
+
+// 写名单：先落 KV（这一步不能失败），再顺手同步回 config.yaml。
+// config.yaml 的同步是「尽力而为」——令牌没写权限时会失败，但不影响功能，
+// 等哪天令牌权限补全了，它自己就同步上了。
+async function saveItems(env, items) {
+  await env.WATCHLIST.put(KV_KEY, JSON.stringify(items));
+  try {
+    const { text, sha } = await readConfig(env);
+    const next = replaceWatchlist(text, items);
+    if (next !== text) {
+      await writeConfig(env, next, sha, '监控名单更新（同步自 KV）');
+    }
+  } catch (e) {
+    // 只读令牌必然走到这里，忽略即可
+  }
+}
+
 // ---------- 路由 ----------
 
 export default {
@@ -174,8 +217,7 @@ export default {
     try {
       // 当前名单（公开信息，不用鉴权）
       if (method === 'GET' && path === '/api/state') {
-        const { text } = await readConfig(env);
-        return json({ ok: true, items: parseWatchlist(text) });
+        return json({ ok: true, items: await loadItems(env) });
       }
 
       // 查公司代码 → 官方全名 + CIK（不用鉴权）
@@ -195,24 +237,24 @@ export default {
       if (method === 'POST' && path === '/api/add') {
         const body = await request.json();
         if (!body.ticker || !body.cik) return fail('缺少 ticker 或 cik');
-        const { text, sha } = await readConfig(env);
-        const items = parseWatchlist(text);
-        if (items.some((i) => i.ticker.toUpperCase() === body.ticker.toUpperCase())) {
+        const items = await loadItems(env);
+        if (items.some((i) => String(i.ticker).toUpperCase() === body.ticker.toUpperCase())) {
           return fail(`${body.ticker} 已经在名单里了`);
         }
         items.push({ ticker: body.ticker.toUpperCase(), cik: body.cik, name: body.name || '' });
-        await writeConfig(env, replaceWatchlist(text, items), sha, `监控名单 +${body.ticker}`);
+        await saveItems(env, items);
         return json({ ok: true, items });
       }
 
       if (method === 'POST' && path === '/api/remove') {
         const body = await request.json();
         if (!body.ticker) return fail('缺少 ticker');
-        const { text, sha } = await readConfig(env);
-        const items = parseWatchlist(text);
-        const left = items.filter((i) => i.ticker.toUpperCase() !== body.ticker.toUpperCase());
+        const items = await loadItems(env);
+        const left = items.filter(
+          (i) => String(i.ticker).toUpperCase() !== body.ticker.toUpperCase()
+        );
         if (left.length === items.length) return fail(`名单里没有 ${body.ticker}`, 404);
-        await writeConfig(env, replaceWatchlist(text, left), sha, `监控名单 -${body.ticker}`);
+        await saveItems(env, left);
         return json({ ok: true, items: left });
       }
 
