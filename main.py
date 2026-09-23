@@ -59,9 +59,13 @@ def _remote_watchlist():
     config.yaml 只当兜底。拉不到（没配 / 后台挂了 / 网络不通）就返回 None，
     让调用方继续用 config.yaml —— 后台出问题不该让整个抓取失败。
     """
-    api = (os.environ.get("WATCHLIST_API") or "").strip()
+    # 两个变量都认：WATCHLIST_API 是专用的，没配就退回 ADMIN_API（同一个后台）
+    api = (os.environ.get("WATCHLIST_API") or os.environ.get("ADMIN_API") or "").strip()
     if not api:
+        # 这里以前是静默返回，导致「环境变量没传进来」和「后台拉不到」两种故障分不清。
+        log("没配 WATCHLIST_API / ADMIN_API，用 config.yaml 的名单")
         return None
+    log(f"拉取云端名单：{api}")
 
     # 重试 3 次：一次网络抖动就静默退回旧名单的话，用户刚加的公司会「明明成功了却没生效」，
     # 很难查。多试几下的代价只是几十秒。

@@ -6,6 +6,20 @@ on:
     # 注意：GitHub 的定时任务不保证准点，高峰期可能延迟 5~30 分钟，对本站无所谓。
     - cron: "5 4,10,16,22 * * *"
   workflow_dispatch:        # 也可以在 Actions 页面手动点一下跑
+  # 改了代码就自动跑一次，省得手动点，也能立刻验证改动生效。
+  # 必须限定 paths：机器人自己提交的是 data/ 和 docs/，
+  # 不限定的话会变成「机器人提交 → 触发 → 又提交」的死循环。
+  push:
+    branches: [main]
+    paths:
+      - "main.py"
+      - "brief.py"
+      - "db.py"
+      - "fetch_sec.py"
+      - "translate.py"
+      - "macro.py"
+      - "requirements.txt"
+      - ".github/workflows/daily.yml"
 
 permissions:
   contents: write           # 需要写权限才能把去重库和新简报提交回来
