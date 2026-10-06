@@ -145,18 +145,35 @@ def _locate(text: str, low: str, phrase: str) -> int:
 
 
 def extract_relevant(text: str, form: str, max_chars: int) -> str:
-    """10-Q/10-K 优先取回购表附近；没有就退到 MD&A / 利润表；都没有才取开头。
+    """从财报中拼接多个关键章节，避免只截一段而漏掉财务报表。"""
+    if form not in ("10-Q", "10-K"):
+        return text[:max_chars]
 
-    关键是不要轻易退回「取正文开头」——那一段很可能是 XBRL 元数据残留，
-    不含任何财务数字，AI 拿到后只能编造并用 XX 占位。
-    """
-    if form in ("10-Q", "10-K"):
-        low = text.lower()
-        i = _locate(text, low, BUYBACK_ANCHOR)
-        if i >= 0:  # 回购表前后都要留一点上下文
-            return text[max(0, i - 1500) : i + 6000][:max_chars]
-        for anchor in FALLBACK_ANCHORS:
-            i = _locate(text, low, anchor)
-            if i >= 0:
-                return text[i : i + max_chars]
+    low = text.lower()
+    anchors = (
+        "condensed consolidated statements of operations",
+        "consolidated statements of operations",
+        "condensed consolidated balance sheets",
+        "consolidated balance sheets",
+        "condensed consolidated statements of cash flows",
+        "consolidated statements of cash flows",
+        "item 2. management's discussion and analysis",
+        "management's discussion and analysis",
+        "issuer purchases of equity securities",
+    )
+    chunks, seen = [], set()
+    for anchor in anchors:
+        i = _locate(text, low, anchor)
+        if i < 0:
+            continue
+        before = 300 if "statements of" in anchor else 900
+        window = text[max(0, i - before): i + 4500]
+        key = window[:200]
+        if key in seen:
+            continue
+        seen.add(key)
+        chunks.append(window)
+
+    if chunks:
+        return "\n\n===== 关键财务章节 =====\n\n".join(chunks)[:max_chars]
     return text[:max_chars]
