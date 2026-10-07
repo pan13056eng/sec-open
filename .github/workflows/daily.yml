@@ -67,24 +67,33 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_START: ${{ env.RUN_START }}
+          TEST_TELEGRAM: ${{ startsWith(github.event.head_commit.message, 'test telegram') }}
         run: |
           python - <<'PYEOF'
-          import json, os, sqlite3, urllib.parse, urllib.request
+          import html, json, os, sqlite3, urllib.parse, urllib.request
           from datetime import datetime, timezone
-          token = os.environ.get("TELEGRAM_BOT_TOKEN")
-          chat = os.environ.get("TELEGRAM_CHAT_ID")
+          token, chat = os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
           if not token or not chat:
               raise SystemExit("Telegram secrets 未配置")
           start = datetime.fromtimestamp(float(os.environ.get("RUN_START", "0")), timezone.utc).replace(tzinfo=None)
           con = sqlite3.connect("data/intel.db")
           rows = con.execute("SELECT ticker, company, form, filing_date, summary_zh, url FROM filings WHERE translated=1 AND created_at >= ? ORDER BY created_at", (start.isoformat(timespec="seconds"),)).fetchall()
+          test = os.environ.get("TEST_TELEGRAM", "").lower() == "true"
+          if not rows and test:
+              rows = con.execute("SELECT ticker, company, form, filing_date, summary_zh, url FROM filings WHERE translated=1 ORDER BY filing_date DESC, created_at DESC LIMIT 1").fetchall()
+
+          def send(text):
+              data = urllib.parse.urlencode({"chat_id": chat, "text": text, "parse_mode": "HTML", "disable_web_page_preview": "true"}).encode()
+              req = urllib.request.Request("https://api.telegram.org/bot%s/sendMessage" % token, data=data, method="POST")
+              with urllib.request.urlopen(req, timeout=30) as r: json.load(r)
+
           for ticker, company, form, filing_date, summary, url in rows:
-              text = f"美股新公告\\n{ticker} {company} · {form} · {filing_date}\\n\\n{summary}\\n\\n{url}"
-              data = urllib.parse.urlencode({"chat_id": chat, "text": text[:3900], "disable_web_page_preview": "true"}).encode()
-              req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMessage", data=data, method="POST")
-              with urllib.request.urlopen(req, timeout=30) as r:
-                  json.load(r)
-          print(f"Telegram 已推送 {len(rows)} 条美股更新")
+              summary = (summary or "").replace("【一句话概要】", "").replace("【要点摘要】", "").strip()
+              text = ("<b>📈 美股公告更新</b>\n\n<b>%s %s</b> · %s\n📅 %s\n\n%s\n\n<a href=\"%s\">查看原文</a>") % (html.escape(ticker), html.escape(company or ""), html.escape(form), html.escape(filing_date), html.escape(summary), html.escape(url, quote=True))
+              if test:
+                  text = "<b>🧪 美股 Telegram 测试消息</b>\n\n" + text
+              send(text[:3900])
+          print("Telegram 已推送 %d 条美股消息" % len(rows))
           PYEOF
 
       - name: 发布到 docs/
