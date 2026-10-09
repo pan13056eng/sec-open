@@ -152,8 +152,7 @@ def main():
         f"翻译链路 {' → '.join(tr.order()) or '（未配置）'}"
     )
 
-    new_count = 0
-    for w in wl:
+    force_reprocess = {x.strip() for x in os.environ.get("FORCE_REPROCESS_ACCESSIONS", "").split(",") if x.strip()}\n    new_count = 0\n    for w in wl:
         ticker = w["ticker"]
         cik = str(w["cik"]).zfill(10)
         name = w.get("name", "")
@@ -170,7 +169,7 @@ def main():
 
         for c in cands:
             acc = c["accession"]
-            if db.is_done(acc):
+            if db.is_done(acc) and acc not in force_reprocess:
                 continue  # 已翻译过，跳过省额度
             if db.attempts(acc) >= MAX_ATTEMPTS:
                 log(f"  {ticker} {c["form"]} 已失败 {MAX_ATTEMPTS} 次，不再重试（省额度）")
