@@ -152,7 +152,9 @@ def main():
         f"翻译链路 {' → '.join(tr.order()) or '（未配置）'}"
     )
 
-    force_reprocess = {x.strip() for x in os.environ.get("FORCE_REPROCESS_ACCESSIONS", "").split(",") if x.strip()}\n    new_count = 0\n    for w in wl:
+    force_reprocess = {x.strip() for x in os.environ.get("FORCE_REPROCESS_ACCESSIONS", "").split(",") if x.strip()}
+    new_count = 0
+    for w in wl:
         ticker = w["ticker"]
         cik = str(w["cik"]).zfill(10)
         name = w.get("name", "")
