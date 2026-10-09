@@ -49,6 +49,7 @@ jobs:
         env:
           # 在仓库 Settings → Secrets and variables → Actions 里添加
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          FORCE_REPROCESS_ACCESSIONS: "0000723125-26-000018"
           # 可选：不配就用 config.yaml 里那个（公开仓库建议配一个，免得邮箱被爬）
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           # 发布模式：去掉本机管理面板——线上访问不到你本机的 127.0.0.1:8765
