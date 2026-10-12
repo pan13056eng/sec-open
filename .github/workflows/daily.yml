@@ -69,7 +69,6 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_START: ${{ env.RUN_START }}
           TEST_TELEGRAM: ${{ startsWith(github.event.head_commit.message, 'test telegram now') }}
-          TEST_TELEGRAM: ${{ startsWith(github.event.head_commit.message, 'test telegram') }}
         run: |
           python - <<'PYEOF'
           import html, json, os, sqlite3, urllib.parse, urllib.request
@@ -80,17 +79,17 @@ jobs:
           start = datetime.fromtimestamp(float(os.environ.get("RUN_START", "0")), timezone.utc).replace(tzinfo=None)
           con = sqlite3.connect("data/intel.db")
           rows = con.execute("SELECT ticker, company, form, filing_date, summary_zh, url FROM filings WHERE translated=1 AND created_at >= ? ORDER BY created_at", (start.isoformat(timespec="seconds"),)).fetchall()
+          def send(text):
+              data = urllib.parse.urlencode({"chat_id": chat, "text": text, "parse_mode": "HTML", "disable_web_page_preview": "true"}).encode()
+              req = urllib.request.Request("https://api.telegram.org/bot%s/sendMessage" % token, data=data, method="POST")
+              with urllib.request.urlopen(req, timeout=30) as r: json.load(r)
+
           test = os.environ.get("TEST_TELEGRAM", "").lower() == "true"
           if test and not rows:
               send("<b>✅ Telegram 测试成功</b>\n\n美股项目已经可以使用当前 Bot Token 推送。")
               raise SystemExit(0)
           if not rows and test:
               rows = con.execute("SELECT ticker, company, form, filing_date, summary_zh, url FROM filings WHERE translated=1 ORDER BY filing_date DESC, created_at DESC LIMIT 1").fetchall()
-
-          def send(text):
-              data = urllib.parse.urlencode({"chat_id": chat, "text": text, "parse_mode": "HTML", "disable_web_page_preview": "true"}).encode()
-              req = urllib.request.Request("https://api.telegram.org/bot%s/sendMessage" % token, data=data, method="POST")
-              with urllib.request.urlopen(req, timeout=30) as r: json.load(r)
 
           for ticker, company, form, filing_date, summary, url in rows:
               summary = (summary or "").replace("【一句话概要】", "").replace("【要点摘要】", "").strip()
