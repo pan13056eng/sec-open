@@ -1,4 +1,5 @@
 name: 抓取美股公告
+# one-time telegram test trigger
 
 on:
   schedule:
