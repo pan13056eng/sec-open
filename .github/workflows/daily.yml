@@ -68,6 +68,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_START: ${{ env.RUN_START }}
+          TEST_TELEGRAM: ${{ startsWith(github.event.head_commit.message, 'test telegram now') }}
           TEST_TELEGRAM: ${{ startsWith(github.event.head_commit.message, 'test telegram') }}
         run: |
           python - <<'PYEOF'
@@ -80,6 +81,9 @@ jobs:
           con = sqlite3.connect("data/intel.db")
           rows = con.execute("SELECT ticker, company, form, filing_date, summary_zh, url FROM filings WHERE translated=1 AND created_at >= ? ORDER BY created_at", (start.isoformat(timespec="seconds"),)).fetchall()
           test = os.environ.get("TEST_TELEGRAM", "").lower() == "true"
+          if test and not rows:
+              send("<b>✅ Telegram 测试成功</b>\n\n美股项目已经可以使用当前 Bot Token 推送。")
+              raise SystemExit(0)
           if not rows and test:
               rows = con.execute("SELECT ticker, company, form, filing_date, summary_zh, url FROM filings WHERE translated=1 ORDER BY filing_date DESC, created_at DESC LIMIT 1").fetchall()
 
